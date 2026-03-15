@@ -16,10 +16,10 @@ from validate_schedule import (
 )
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="ETFCSA-TSD ITC Scheduler", layout="wide")
+st.set_page_config(page_title="SDCSA Scheduler", layout="wide")
 
-st.title("University Class Scheduler (ITC 2019 Standard)")
-st.markdown("**Powered by Event-Triggered FCSA with Temporal Substrate Drift (Thesis Algorithm)**")
+st.title("University Class Scheduler")
+st.markdown("**Powered by Substrate Drift Clonal Selection Algorithm**")
 
 # --- SIDEBAR: PARAMETERS ---
 st.sidebar.header("Algorithm Parameters")
@@ -39,18 +39,6 @@ w_inst_load = st.sidebar.slider("Instructor Daily Overload (S3)", 0.0, 5.0, 0.3,
 w_gap = st.sidebar.slider("Schedule Gap > 2h (S4)", 0.0, 5.0, 0.2, 0.1)
 w_late = st.sidebar.slider("Late Class >= 6PM (S5)", 0.0, 5.0, 0.1, 0.1)
 
-# Meta info for ITC XML Header
-st.sidebar.header("ITC 2019 Metadata")
-author_name = st.sidebar.text_input("Author Name", value="I. Zarate, et al.")
-institution = st.sidebar.text_input("Institution", value="USTP")
-instance_name = st.sidebar.text_input("Instance Name", value="USTP-Semester2-2025")
-
-# ITC API Credentials
-st.sidebar.header("ITC 2019 API Validation")
-st.sidebar.markdown("Enter credentials to automatically validate the schedule after optimization.")
-itc_email = st.sidebar.text_input("ITC Email")
-itc_password = st.sidebar.text_input("ITC Password", type="password")
-
 
 # --- HELPER: ITC 2019 XML GENERATOR ---
 def generate_itc2019_xml(schedule_data, runtime, fitness):
@@ -58,7 +46,7 @@ def generate_itc2019_xml(schedule_data, runtime, fitness):
         "name": instance_name,
         "runtime": f"{runtime:.2f}",
         "cores": "1",
-        "technique": f"ETFCSA_TSD (Conflicts: {fitness})",
+        "technique": f"SDCSA (Conflicts: {fitness})",
         "author": author_name,
         "institution": institution,
         "country": "Philippines"
@@ -348,7 +336,7 @@ if uploaded_file is not None:
         best_schedule = decode_schedule(best_x)
 
         # --- LOCAL VALIDATION (using validate_schedule.py) ---
-        st.header("3. Schedule Validation (ITC 2019-Style)")
+        st.header("3. Schedule Validation")
         st.markdown("Independent validation using the same framework applied to the initial CITC schedule.")
 
         # Build a DataFrame in the same format as CITC_SCHEDULING_CLEANED
@@ -509,7 +497,7 @@ if uploaded_file is not None:
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
 
-        xml_data = generate_itc2019_xml(best_schedule, runtime, hard_count)
+        xml_data = generate_itc2019_xml(best_schedule, runtime, report.hard_count)
 
         with col2:
             st.download_button(
