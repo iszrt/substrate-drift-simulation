@@ -5,9 +5,6 @@ import io
 import os
 import time
 import datetime
-import requests
-import xml.etree.ElementTree as ET
-from xml.dom import minidom
 from collections import defaultdict
 from tsd import ETFCSA_TSD
 from validate_schedule import (
@@ -38,66 +35,6 @@ w_daily_load = st.sidebar.slider("Section Daily Overload (S2)", 0.0, 5.0, 0.3, 0
 w_inst_load = st.sidebar.slider("Instructor Daily Overload (S3)", 0.0, 5.0, 0.3, 0.1)
 w_gap = st.sidebar.slider("Schedule Gap > 2h (S4)", 0.0, 5.0, 0.2, 0.1)
 w_late = st.sidebar.slider("Late Class >= 6PM (S5)", 0.0, 5.0, 0.1, 0.1)
-
-
-# --- HELPER: ITC 2019 XML GENERATOR ---
-def generate_itc2019_xml(schedule_data, runtime, fitness):
-    root = ET.Element("solution", {
-        "name": instance_name,
-        "runtime": f"{runtime:.2f}",
-        "cores": "1",
-        "technique": f"SDCSA (Conflicts: {fitness})",
-        "author": author_name,
-        "institution": institution,
-        "country": "Philippines"
-    })
-
-    day_map = {
-        'Monday': '1000000', 'Tuesday': '0100000', 'Wednesday': '0010000',
-        'Thursday': '0001000', 'Friday': '0000100', 'Saturday': '0000010'
-    }
-
-    def parse_time_to_itc_start(time_str):
-        try:
-            start_str = time_str.split(" - ")[0]
-            t = pd.to_datetime(start_str, format="%I:%M %p")
-            return str((t.hour * 60 + t.minute) // 5)
-        except Exception:
-            return "0"
-
-    weeks_str = "11111111111111"
-
-    df_sched = pd.DataFrame(schedule_data)
-    # Only face-to-face classes have rooms; online classes get room=""
-    all_rooms = df_sched.loc[df_sched["Room"] != "ONLINE", "Room"].unique()
-    room_to_id = {r: str(i + 1) for i, r in enumerate(all_rooms)}
-    section_to_id = {s: str(i + 1) for i, s in enumerate(df_sched['Section'].unique())}
-
-    for i, row in enumerate(schedule_data):
-        room_id = room_to_id.get(row['Room'], "0")
-        class_node = ET.SubElement(root, "class", {
-            "id": str(i + 1),
-            "days": day_map.get(row['Day'], '0000000'),
-            "start": parse_time_to_itc_start(row['Time']),
-            "weeks": weeks_str,
-            "room": room_id
-        })
-        ET.SubElement(class_node, "student", {
-            "id": section_to_id.get(row['Section'], "")
-        })
-
-    xml_str = ET.tostring(root, 'utf-8')
-    parsed = minidom.parseString(xml_str)
-    pretty_xml = parsed.toprettyxml(indent="  ")
-
-    if pretty_xml.startswith('<?xml'):
-        pretty_xml = pretty_xml.split('\n', 1)[1]
-
-    header = '<?xml version="1.0" encoding="UTF-8"?>\n'
-    doctype = '<!DOCTYPE solution PUBLIC "-//ITC 2019//DTD Problem Format/EN" "http://www.itc2019.org/competition-format.dtd">\n'
-
-    return header + doctype + pretty_xml
-
 
 # --- MAIN UI ---
 st.header("1. Upload Class Requirements Data")
@@ -473,7 +410,7 @@ if uploaded_file is not None:
         # --- EXPORT OPTIONS ---
         st.header("4. Download Output")
 
-        col1, col2 = st.columns(2)
+        col1 = st.columns(1)[0]
 
         df_best = pd.DataFrame(best_schedule)
         day_map_excel = {'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6}
@@ -496,19 +433,6 @@ if uploaded_file is not None:
                 file_name="Optimized_Schedule.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
-
-        xml_data = generate_itc2019_xml(best_schedule, runtime, report.hard_count)
-
-        with col2:
-            st.download_button(
-                label="Download ITC 2019 XML Format",
-                data=xml_data,
-                file_name=f"{instance_name}_solution.xml",
-                mime="application/xml"
-            )
-
-        with st.expander("View ITC 2019 XML Output Code"):
-            st.code(xml_data, language="xml")
 
         # Full validation report download
         report_text = format_report(report)
@@ -561,65 +485,3 @@ if uploaded_file is not None:
 
         st.success(f"Log saved to: logs/run_{timestamp}.log")
 
-        # --- ITC 2019 API VALIDATION ---
-        st.header("5. ITC 2019 API Validation (Optional)")
-        st.markdown("Validate against the official ITC 2019 server (requires registration).")
-
-        if not itc_email or not itc_password:
-            st.info("Enter your ITC email and password in the sidebar to view official validation metrics here.")
-        else:
-            with st.spinner("Connecting to ITC 2019 servers for validation..."):
-                url = "https://www.itc2019.org/itc2019-validator"
-                credentials = (itc_email, itc_password)
-                headers = {"Content-Type": "text/xml;charset=UTF-8"}
-
-                try:
-                    response = requests.post(url, auth=credentials, headers=headers, data=xml_data.encode('utf-8'))
-
-                    if response.status_code == 200:
-                        response_data = response.json()
-                        st.success("Validation Successful!")
-
-                        st.subheader(f"Optimization Results: {response_data.get('instance', 'Unknown Instance')}")
-
-                        m_col1, m_col2, m_col3 = st.columns(3)
-                        with m_col1:
-                            st.metric(label="Validation Status", value=response_data.get("result", "UNKNOWN"))
-                        with m_col2:
-                            total_cost = response_data.get("totalCost", {}).get("value", 0)
-                            st.metric(label="Total Penalty (Cost)", value=total_cost)
-                        with m_col3:
-                            assigned = response_data.get("assignedVariables", {})
-                            assigned_str = f"{assigned.get('value', 0)} / {assigned.get('total', 0)}"
-                            st.metric(label="Variables Assigned", value=assigned_str)
-
-                        st.divider()
-
-                        st.markdown("**Penalty Breakdown**")
-                        p_col1, p_col2, p_col3, p_col4 = st.columns(4)
-                        with p_col1:
-                            st.metric(label="Time Penalty", value=response_data.get("timePenalty", {}).get("value", 0))
-                        with p_col2:
-                            st.metric(label="Room Penalty", value=response_data.get("roomPenalty", {}).get("value", 0))
-                        with p_col3:
-                            st.metric(label="Distribution Penalty", value=response_data.get("distributionPenalty", {}).get("value", 0))
-                        with p_col4:
-                            st.metric(label="Student Conflicts", value=response_data.get("studentConflicts", {}).get("value", 0))
-
-                        st.divider()
-
-                        st.markdown("**Performance**")
-                        perf_col1, perf_col2 = st.columns(2)
-                        with perf_col1:
-                            st.metric(label="Runtime (s)", value=response_data.get("runtime", "N/A"))
-                        with perf_col2:
-                            st.metric(label="Technique", value=response_data.get("technique", "N/A"))
-
-                        with st.expander("View Full ITC Validation Error Log"):
-                            st.write(response_data.get("log", ["No log available."]))
-
-                    else:
-                        st.error(f"API Error: Received status code {response.status_code}")
-                        st.write(response.text)
-                except Exception as e:
-                    st.error(f"Failed to connect to the ITC Validator: {e}")
