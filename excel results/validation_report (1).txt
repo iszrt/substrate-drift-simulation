@@ -1,0 +1,73 @@
+======================================================================
+  VALIDATION REPORT: Optimized Schedule
+======================================================================
+
+  Schedule Statistics:
+    Total Meetings                : 124
+    Face-To-Face Meetings         : 100
+    Online Meetings               : 24
+    Sections                      : 13
+    Subjects                      : 27
+    Instructors                   : 37
+    Rooms Used                    : 24
+    Days Used                     : 6
+
+  Note: Online meetings (no room) are excluded from room conflict
+  and room type checks, but still checked for instructor/section conflicts.
+
+  ==================================================
+  FEASIBILITY: FEASIBLE (0 hard constraint violations)
+  SOFT PENALTY: 73 soft constraint violations
+  ==================================================
+
+  --- HARD CONSTRAINTS ---
+  H1: Room Conflict                   PASS
+  H2: Instructor Conflict             PASS
+  H3: Section Conflict                PASS
+
+  --- SOFT CONSTRAINTS ---
+  S1: Room Type Mismatch              26 violations
+    - Lab subject 'CS122' (CS1A) assigned to non-lab room '42-503 Engineering C' (type: other)
+    - Lab subject 'CS122' (CS1B) assigned to non-lab room '42-503 Engineering C' (type: other)
+    - Lab subject 'CS122' (CS1B) assigned to non-lab room 'Modular Classroom 1' (type: lecture)
+    - Lab subject 'CS122' (CS1C) assigned to non-lab room 'Modular Classroom 1' (type: lecture)
+    - Lab subject 'CS222' (CS2A) assigned to non-lab room '28-108' (type: other)
+    - Lab subject 'CS222' (CS2B) assigned to non-lab room '42-302' (type: other)
+    - Lab subject 'CS222' (CS2B) assigned to non-lab room '28-108' (type: other)
+    - Lab subject 'CS326' (CS3A) assigned to non-lab room '51-201' (type: other)
+    - Lab subject 'CS321' (CS3A) assigned to non-lab room 'Modular Classroom 6' (type: lecture)
+    - Lab subject 'CS325' (CS3A) assigned to non-lab room '51-304' (type: other)
+    ... and 16 more
+  S2: Section Daily Overload          1 violations
+    - Section 'CS1B' has 6 classes on Wednesday (max recommended: 5)
+  S3: Instructor Daily Overload       0 violations
+  S4: Schedule Gap                    17 violations
+    - Section 'CS1A' on Monday: 630 min gap between class ending at 08:30 AM and class starting at 07:00 PM
+    - Section 'CS1C' on Thursday: 360 min gap between class ending at 08:30 AM and class starting at 02:30 PM
+    - Section 'CS2A' on Saturday: 630 min gap between class ending at 10:00 AM and class starting at 08:30 PM
+    - Section 'CS2B' on Thursday: 270 min gap between class ending at 01:00 PM and class starting at 05:30 PM
+    - Section 'CS2B' on Tuesday: 270 min gap between class ending at 02:30 PM and class starting at 07:00 PM
+    - Section 'CS2B' on Wednesday: 270 min gap between class ending at 10:00 AM and class starting at 02:30 PM
+    - Section 'CS2B' on Wednesday: 270 min gap between class ending at 04:00 PM and class starting at 08:30 PM
+    - Section 'CS3A' on Friday: 360 min gap between class ending at 01:00 PM and class starting at 07:00 PM
+    - Section 'CS3A' on Monday: 180 min gap between class ending at 11:30 AM and class starting at 02:30 PM
+    - Section 'CS3A' on Wednesday: 270 min gap between class ending at 10:00 AM and class starting at 02:30 PM
+    ... and 7 more
+  S5: Late Class                      29 violations
+    - 'CS121' (CS1A) on Monday starts at 07:00 PM (after 06:00 PM)
+    - 'NSTP102b' (CS1A) on Friday starts at 08:30 PM (after 06:00 PM)
+    - 'STS' (CS1A) on Tuesday starts at 08:30 PM (after 06:00 PM)
+    - 'CS121' (CS1B) on Tuesday starts at 07:00 PM (after 06:00 PM)
+    - 'ArtApp' (CS1B) on Wednesday starts at 08:30 PM (after 06:00 PM)
+    - 'NSTP102b' (CS1B) on Wednesday starts at 07:00 PM (after 06:00 PM)
+    - 'UTS' (CS1B) on Tuesday starts at 08:30 PM (after 06:00 PM)
+    - 'PATH FIT 2' (CS1C) on Thursday starts at 07:00 PM (after 06:00 PM)
+    - 'STS' (CS1C) on Thursday starts at 08:30 PM (after 06:00 PM)
+    - 'PATH FIT 2' (CS1D) on Friday starts at 08:30 PM (after 06:00 PM)
+    ... and 19 more
+
+  --- WARNINGS ---
+  W1: 24 class meetings have no room assigned (classified as online)
+  W2: 2 class meetings have no instructor assigned
+
+======================================================================

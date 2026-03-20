@@ -1,0 +1,77 @@
+======================================================================
+  VALIDATION REPORT: CITC_CS_Schedules_Cleaned
+======================================================================
+
+  Schedule Statistics:
+    Total Meetings                : 124
+    Face-To-Face Meetings         : 100
+    Online Meetings               : 24
+    Sections                      : 13
+    Subjects                      : 27
+    Instructors                   : 37
+    Rooms Used                    : 24
+    Days Used                     : 6
+
+  Note: Online meetings (no room) are excluded from room conflict
+  and room type checks, but still checked for instructor/section conflicts.
+
+  ==================================================
+  FEASIBILITY: INFEASIBLE (7 hard constraint violations)
+  SOFT PENALTY: 58 soft constraint violations
+  ==================================================
+
+  --- HARD CONSTRAINTS ---
+  H1: Room Conflict                   FAIL (3 violations)
+    - Room '09-306 (CITC Lab 6)' on Monday: 'CS121' (CS1C) [01:00 PM - 02:00 PM] overlaps with 'CS422' (CS4B) [01:00 PM - 02:00 PM]
+    - Room '09-306 (CITC Lab 6)' on Saturday: 'CS221' (CS2A) [01:00 PM - 02:00 PM] overlaps with 'CS225' (CS2B) [10:30 AM - 01:30 PM]
+    - Room '09-306 (CITC Lab 6)' on Wednesday: 'CS224' (CS2A) [10:00 AM - 11:00 AM] overlaps with 'CS224' (CS2B) [08:00 AM - 11:00 AM]
+  H2: Instructor Conflict             FAIL (3 violations)
+    - Instructor 'AMPOLITOD, KENNETH' on Wednesday: 'CS224' (CS2A) [10:00 AM - 11:00 AM] overlaps with 'CS224' (CS2B) [08:00 AM - 11:00 AM]
+    - Instructor 'Mac, Joie Ann' on Wednesday: 'CS225' (CS2A) [06:00 PM - 07:00 PM] overlaps with 'CS225' (CS2B) [05:00 PM - 08:00 PM]
+    - Instructor 'PAGAL, CHERYLL' on Friday: 'CSMath221' (CS2A) [02:00 PM - 03:00 PM] overlaps with 'CS422' (CS4A) [01:00 PM - 03:00 PM]
+  H3: Section Conflict                FAIL (1 violations)
+    - Section 'CS2B' on Tuesday: 'CS223' [01:00 PM - 04:00 PM] overlaps with 'CS224' [03:00 PM - 04:00 PM]
+
+  --- SOFT CONSTRAINTS ---
+  S1: Room Type Mismatch              18 violations
+    - Lab subject 'CS122' (CS1A) assigned to non-lab room 'Modular Classroom 1' (type: lecture)
+    - Lab subject 'CS122' (CS1B) assigned to non-lab room '51-105' (type: other)
+    - Lab subject 'CS122' (CS1C) assigned to non-lab room 'Modular Classroom 6' (type: lecture)
+    - Lab subject 'CS122' (CS1C) assigned to non-lab room '51-105' (type: other)
+    - Lab subject 'CS222' (CS2A) assigned to non-lab room '51-201' (type: other)
+    - Lab subject 'CS222' (CS2B) assigned to non-lab room '51-105' (type: other)
+    - Lab subject 'CS326' (CS3A) assigned to non-lab room '51-105' (type: other)
+    - Lab subject 'CS321' (CS3A) assigned to non-lab room '51-105' (type: other)
+    - Lab subject 'CS325' (CS3A) assigned to non-lab room '09-404 (ICT AVR2)' (type: other)
+    - Lab subject 'CS323' (CS3A) assigned to non-lab room '51-105' (type: other)
+    ... and 8 more
+  S2: Section Daily Overload          0 violations
+  S3: Instructor Daily Overload       1 violations
+    - Instructor 'Eder, Marylene S.' has 7 classes on Monday (max recommended: 5)
+  S4: Schedule Gap                    31 violations
+    - Section 'CS1A' on Friday: 300 min gap between class ending at 11:00 AM and class starting at 04:00 PM
+    - Section 'CS1A' on Monday: 300 min gap between class ending at 11:00 AM and class starting at 04:00 PM
+    - Section 'CS1A' on Wednesday: 240 min gap between class ending at 09:00 AM and class starting at 01:00 PM
+    - Section 'CS1B' on Friday: 180 min gap between class ending at 01:00 PM and class starting at 04:00 PM
+    - Section 'CS1B' on Tuesday: 300 min gap between class ending at 11:00 AM and class starting at 04:00 PM
+    - Section 'CS1B' on Wednesday: 240 min gap between class ending at 09:00 AM and class starting at 01:00 PM
+    - Section 'CS1C' on Friday: 360 min gap between class ending at 08:00 AM and class starting at 02:00 PM
+    - Section 'CS1C' on Tuesday: 480 min gap between class ending at 08:00 AM and class starting at 04:00 PM
+    - Section 'CS1C' on Wednesday: 240 min gap between class ending at 09:00 AM and class starting at 01:00 PM
+    - Section 'CS2A' on Friday: 180 min gap between class ending at 03:00 PM and class starting at 06:00 PM
+    ... and 21 more
+  S5: Late Class                      8 violations
+    - 'CS222' (CS2A) on Tuesday starts at 06:00 PM (after 06:00 PM)
+    - 'CS225' (CS2A) on Wednesday starts at 06:00 PM (after 06:00 PM)
+    - 'CS221' (CS2A) on Friday starts at 06:00 PM (after 06:00 PM)
+    - 'CS325' (CS3A) on Tuesday starts at 06:00 PM (after 06:00 PM)
+    - 'CS321' (CS3B) on Monday starts at 07:00 PM (after 06:00 PM)
+    - 'CS325' (CS3C) on Monday starts at 06:00 PM (after 06:00 PM)
+    - 'CS423' (CS4B) on Wednesday starts at 07:00 PM (after 06:00 PM)
+    - 'CS423' (CS4C) on Thursday starts at 07:00 PM (after 06:00 PM)
+
+  --- WARNINGS ---
+  W1: 24 class meetings have no room assigned (classified as online)
+  W2: 2 class meetings have no instructor assigned
+
+======================================================================

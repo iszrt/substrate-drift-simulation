@@ -1,0 +1,30 @@
+=== ETFCSA-TSD Optimization Log ===
+Timestamp   : 2026-03-16 19:32:16
+Runtime     : 2902.22s
+Final Fitness: 95.00
+
+--- Parameters ---
+Population  : 100
+Max Evals   : 1000000
+Clones      : 15
+Rho         : 0.97
+Weights     : S1=0.2, S2=0.1, S3=0.1, S4=0.0, S5=0.0
+
+--- Problem Size ---
+Total Classes: 755 (553 f2f + 202 online)
+Variables    : 1308
+Rooms        : 85
+Timeslots    : 60
+
+--- Validation Results ---
+Feasibility  : INFEASIBLE
+Hard Violations: 60
+  H1: Room Conflict: 18
+  H2: Instructor Conflict: 19
+  H3: Section Conflict: 23
+Soft Violations: 513
+  S1: Room Type Mismatch: 184
+  S2: Section Daily Overload: 1
+  S3: Instructor Daily Overload: 1
+  S4: Schedule Gap: 164
+  S5: Late Class: 163

@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -5,6 +6,7 @@ import io
 import os
 import time
 import datetime
+import altair as alt
 from collections import defaultdict
 from tsd import ETFCSA_TSD
 from validate_schedule import (
@@ -17,6 +19,171 @@ st.set_page_config(page_title="SDCSA Scheduler", layout="wide")
 
 st.title("University Class Scheduler")
 st.markdown("**Powered by Substrate Drift Clonal Selection Algorithm**")
+
+
+# -----------------------------
+# Visualization helper methods
+# -----------------------------
+def project_population_2d(pop: np.ndarray) -> pd.DataFrame:
+    """
+    Project a high-dimensional population to 2D using SVD/PCA-like projection.
+    This is only for visualization, not the actual optimization space.
+    """
+    if pop is None or len(pop) == 0:
+        return pd.DataFrame(columns=["x", "y"])
+
+    arr = np.asarray(pop, dtype=float)
+    if arr.ndim != 2:
+        return pd.DataFrame(columns=["x", "y"])
+
+    n, d = arr.shape
+    if d == 1:
+        return pd.DataFrame({"x": arr[:, 0], "y": np.zeros(n)})
+
+    arr_centered = arr - arr.mean(axis=0, keepdims=True)
+    try:
+        _, _, vt = np.linalg.svd(arr_centered, full_matrices=False)
+        basis = vt[:2].T
+        proj = arr_centered @ basis
+    except np.linalg.LinAlgError:
+        proj = np.zeros((n, 2))
+        proj[:, 0] = arr[:, 0]
+        proj[:, 1] = arr[:, 1] if d > 1 else 0.0
+
+    if proj.shape[1] == 1:
+        proj = np.column_stack([proj[:, 0], np.zeros(n)])
+
+    return pd.DataFrame({"x": proj[:, 0], "y": proj[:, 1]})
+
+
+def build_population_frame(pop: np.ndarray, fitness: np.ndarray | list | None = None) -> pd.DataFrame:
+    """
+    Build a compact population DataFrame for display or export.
+    """
+    if pop is None or len(pop) == 0:
+        return pd.DataFrame()
+
+    arr = np.asarray(pop, dtype=float)
+    n, d = arr.shape
+    data = {}
+    keep_dims = min(d, 8)
+    for i in range(keep_dims):
+        data[f"x{i}"] = arr[:, i]
+
+    if fitness is not None and len(fitness) == n:
+        data["fitness"] = np.asarray(fitness, dtype=float)
+
+    return pd.DataFrame(data)
+
+
+def build_activity_frame(optimizer: ETFCSA_TSD) -> pd.DataFrame:
+    """F
+    Build antibody activity DataFrame using stabilized
+    A = log(1 + T / (S + eps)).
+    """
+    import numpy as np
+    import pandas as pd
+
+    if optimizer is None or not getattr(optimizer, "pop", None):
+        return pd.DataFrame(columns=["index", "activity"])
+
+    activities = []
+    for i, ab in enumerate(optimizer.pop):
+        raw = ab.T / (ab.S + 1e-12)
+        activity = np.log1p(raw)
+        activity = min(float(activity), 10.0)
+        activities.append({
+            "index": i,
+            "activity": activity
+        })
+
+    return pd.DataFrame(activities)
+
+def project_and_cluster(pop_df, n_clusters=3):
+    from sklearn.decomposition import PCA
+    from sklearn.cluster import KMeans
+    import pandas as pd
+
+    if pop_df.empty:
+        return pop_df
+
+    X = pop_df.drop(columns=["fitness"]).values
+
+    pca = PCA(n_components=2)
+    proj = pca.fit_transform(X)
+
+    proj_df = pd.DataFrame(proj, columns=["x", "y"])
+    proj_df["fitness"] = pop_df["fitness"].values
+
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+    proj_df["cluster"] = kmeans.fit_predict(proj)
+
+    return proj_df
+
+def build_history_frame(best_history: list[float], drift_history: list[float]) -> pd.DataFrame:
+    m = max(len(best_history), len(drift_history))
+    if m == 0:
+        return pd.DataFrame(columns=["Generation", "Best Fitness", "Drift Magnitude"])
+    generations = np.arange(1, m + 1)
+    best = best_history + [np.nan] * (m - len(best_history))
+    drift = drift_history + [np.nan] * (m - len(drift_history))
+    return pd.DataFrame({
+        "Generation": generations,
+        "Best Fitness": best,
+        "Drift Magnitude": drift,
+    })
+
+
+def make_line_chart(df: pd.DataFrame, x_col: str, y_col: str, title: str, y_title: str):
+    if df is None or df.empty:
+        return None
+    chart = (
+        alt.Chart(df)
+        .mark_line(point=True)
+        .encode(
+            x=alt.X(f"{x_col}:Q", title=x_col),
+            y=alt.Y(f"{y_col}:Q", title=y_title),
+            tooltip=[x_col, y_col],
+        )
+        .properties(title=title, height=260)
+        .interactive()
+    )
+    return chart
+
+
+def make_scatter_chart(df: pd.DataFrame, title: str):
+    if df is None or df.empty:
+        return None
+    chart = (
+        alt.Chart(df)
+        .mark_circle(size=60, opacity=0.75)
+        .encode(
+            x=alt.X("x:Q", title="Projected Dimension 1"),
+            y=alt.Y("y:Q", title="Projected Dimension 2"),
+            tooltip=[alt.Tooltip("x:Q", format=".3f"), alt.Tooltip("y:Q", format=".3f")],
+        )
+        .properties(title=title, height=320)
+        .interactive()
+    )
+    return chart
+
+
+def make_bar_chart(df: pd.DataFrame, x_col: str, y_col: str, title: str, x_title: str, y_title: str):
+    if df is None or df.empty:
+        return None
+    chart = (
+        alt.Chart(df)
+        .mark_bar()
+        .encode(
+            x=alt.X(f"{x_col}:O", title=x_title),
+            y=alt.Y(f"{y_col}:Q", title=y_title),
+            tooltip=[x_col, y_col],
+        )
+        .properties(title=title, height=320)
+        .interactive()
+    )
+    return chart
+
 
 # --- SIDEBAR: PARAMETERS ---
 st.sidebar.header("Algorithm Parameters")
@@ -35,6 +202,11 @@ w_daily_load = st.sidebar.slider("Section Daily Overload (S2)", 0.0, 5.0, 0.3, 0
 w_inst_load = st.sidebar.slider("Instructor Daily Overload (S3)", 0.0, 5.0, 0.3, 0.1)
 w_gap = st.sidebar.slider("Schedule Gap > 2h (S4)", 0.0, 5.0, 0.2, 0.1)
 w_late = st.sidebar.slider("Late Class >= 6PM (S5)", 0.0, 5.0, 0.1, 0.1)
+
+# Visualization controls
+st.sidebar.header("Visualization")
+show_live_viz = st.sidebar.checkbox("Show live optimization visualization", value=True)
+viz_interval = st.sidebar.slider("Visualization update interval (generations)", min_value=1, max_value=50, value=5)
 
 # --- MAIN UI ---
 st.header("1. Upload Class Requirements Data")
@@ -59,6 +231,32 @@ if uploaded_file is not None:
         st.success(f"Data loaded: {len(df_classes)} classes, {len(df_rooms)} rooms.")
         st.warning("No 'Mode' column found. All classes will be treated as face-to-face. "
                     "Use the cleaned input from `preprocess.py` for proper online class handling.")
+
+    with st.expander("Optimization Layers (ETFCSA-TSD)", expanded=False):
+        st.markdown("""
+```text
+Population (candidate schedules)
+        ↓
+Signal Evaluation (improvement I, novelty J)
+        ↓
+Selection of active / hot antibodies
+        ↓
+Mutation and micro-cloning
+        ↓
+Temporal Substrate Drift (directional memory s)
+        ↓
+Re-evaluation of candidate schedules
+        ↓
+Validation of best schedule
+```
+        """)
+        st.markdown("""
+**How TSD works in this prototype**
+- The optimizer stores a substrate vector **s**.
+- Whenever an accepted improvement occurs, the direction of improvement is added into **s**.
+- Future mutations are applied in drifted coordinates, so the search is biased toward promising regions.
+- The substrate gradually decays using **rho**, preventing overcommitment to old directions.
+        """)
 
     if st.button("Run Optimization"):
 
@@ -244,11 +442,101 @@ if uploaded_file is not None:
         progress_bar = st.progress(0)
         status_text = st.empty()
 
+        # --- Visualization containers ---
+        st.subheader("Live Optimization Visualization")
+        top_m1, top_m2, top_m3, top_m4 = st.columns(4)
+        gen_metric_ph = top_m1.empty()
+        eval_metric_ph = top_m2.empty()
+        best_metric_ph = top_m3.empty()
+        drift_metric_ph = top_m4.empty()
+
+        fitness_chart_ph = st.empty()
+        drift_chart_ph = st.empty()
+
+        viz_c1, viz_c2 = st.columns(2)
+        population_chart_ph = viz_c1.empty()
+        activity_chart_ph = viz_c2.empty()
+
+        with st.expander("Why these visualizations matter", expanded=False):
+            st.markdown("""
+- **Best Fitness Curve** shows whether the optimizer is actually improving.
+- **TSD Drift Magnitude** shows how much directional memory has accumulated.
+- **Population Projection** shows how candidate solutions move and cluster.
+- **Antibody Activity** shows which individuals are stagnating or becoming active.
+            """)
+
+        optimizer_box = {"opt": None}
+        best_history_live = []
+        drift_history_live = []
+        viz_state = {
+            "last_drawn_gen": -1,
+            "final_pop": None,
+            "final_fit": None,
+        }
+
         def update_progress(**kwargs):
             current_evals = kwargs.get('evals', 0)
+            current_gen = kwargs.get('gen', 0)
+            best_fitness = kwargs.get('best_fitness', np.nan)
+            pop = kwargs.get('pop', None)
+            fitness = kwargs.get('fitness', None)
+
             progress = min(current_evals / max_evals, 1.0)
             progress_bar.progress(progress)
-            status_text.markdown(f"**Evaluations:** {current_evals} / {max_evals}...")
+            status_text.markdown(f"**Evaluations:** {current_evals:,} / {max_evals:,} | **Generation:** {current_gen}")
+
+            opt = optimizer_box["opt"]
+            drift_norm = float(np.linalg.norm(opt.s)) if opt is not None else 0.0
+
+            viz_state["final_pop"] = pop
+            viz_state["final_fit"] = fitness
+
+            if len(best_history_live) == 0 or current_gen > len(best_history_live):
+                best_history_live.append(float(best_fitness) if best_fitness is not None else np.nan)
+                drift_history_live.append(drift_norm)
+
+            gen_metric_ph.metric("Generation", current_gen)
+            eval_metric_ph.metric("Evaluations", f"{current_evals:,}")
+            best_metric_ph.metric("Best Fitness", f"{float(best_fitness):.2f}" if best_fitness is not None else "N/A")
+            drift_metric_ph.metric("TSD Drift ||s||", f"{drift_norm:.4f}")
+
+            should_redraw = show_live_viz and (
+                current_gen == 0 or current_gen - viz_state["last_drawn_gen"] >= viz_interval or current_evals >= max_evals
+            )
+            if not should_redraw:
+                return
+
+            viz_state["last_drawn_gen"] = current_gen
+
+            hist_df = build_history_frame(best_history_live, drift_history_live)
+            if not hist_df.empty:
+                fitness_chart = make_line_chart(
+                    hist_df, "Generation", "Best Fitness",
+                    "Best Fitness Across Generations", "Best Fitness"
+                )
+                drift_chart = make_line_chart(
+                    hist_df, "Generation", "Drift Magnitude",
+                    "TSD Drift Magnitude Across Generations", "Drift Magnitude ||s||"
+                )
+                if fitness_chart is not None:
+                    fitness_chart_ph.altair_chart(fitness_chart, use_container_width=True)
+                if drift_chart is not None:
+                    drift_chart_ph.altair_chart(drift_chart, use_container_width=True)
+
+            pop2d = project_population_2d(pop)
+            if not pop2d.empty:
+                pop_chart = make_scatter_chart(pop2d, "Population Projection in 2D (Visual Projection)")
+                if pop_chart is not None:
+                    population_chart_ph.altair_chart(pop_chart, use_container_width=True)
+
+            act_df = build_activity_frame(opt)
+            if not act_df.empty:
+                act_chart = make_bar_chart(
+                    act_df, "index", "activity",
+                    "Antibody Activity / Stagnation", "Antibody Index", "Activity A = T / (S + eps)"
+                )
+                if act_chart is not None:
+                    activity_chart_ph.altair_chart(act_chart, use_container_width=True)
 
         bounds = [(0.0, 1.0) for _ in range(dim)]
         optimizer = ETFCSA_TSD(
@@ -262,6 +550,7 @@ if uploaded_file is not None:
             eta=0.25,
             progress=update_progress
         )
+        optimizer_box["opt"] = optimizer
 
         start_time = time.time()
         best_x, best_f, info = optimizer.optimize()
@@ -271,6 +560,63 @@ if uploaded_file is not None:
         status_text.success(f"Optimization Complete! Final Fitness: {best_f:.2f} | Time: {runtime:.2f}s")
 
         best_schedule = decode_schedule(best_x)
+
+        # --- Final visualization summary ---
+        st.subheader("Final Optimization Dynamics")
+        f1, f2, f3, f4 = st.columns(4)
+        f1.metric("Generations Run", info.get("generations_run", len(best_history_live)))
+        f2.metric("Evaluations Used", f"{info.get('evals_used', 0):,}")
+        f3.metric("Final Best Fitness", f"{best_f:.2f}")
+        f4.metric("Final Substrate ||s||", f"{info.get('substrate_norm', 0.0):.4f}")
+
+        final_hist_df = build_history_frame(best_history_live if best_history_live else optimizer.history, drift_history_live)
+        if not final_hist_df.empty:
+            chart_c1, chart_c2 = st.columns(2)
+            with chart_c1:
+                fitness_chart = make_line_chart(
+                    final_hist_df, "Generation", "Best Fitness",
+                    "Best Fitness Across Generations", "Best Fitness"
+                )
+                if fitness_chart is not None:
+                    st.altair_chart(fitness_chart, use_container_width=True)
+            with chart_c2:
+                if final_hist_df["Drift Magnitude"].notna().any():
+                    drift_chart = make_line_chart(
+                        final_hist_df, "Generation", "Drift Magnitude",
+                        "TSD Drift Magnitude Across Generations", "Drift Magnitude ||s||"
+                    )
+                    if drift_chart is not None:
+                        st.altair_chart(drift_chart, use_container_width=True)
+
+        final_vis_c1, final_vis_c2 = st.columns(2)
+        with final_vis_c1:
+            final_pop2d = project_population_2d(viz_state["final_pop"])
+            if not final_pop2d.empty:
+                pop_chart = make_scatter_chart(final_pop2d, "Final Population Projection in 2D (Visual Projection)")
+                if pop_chart is not None:
+                    st.altair_chart(pop_chart, use_container_width=True)
+            else:
+                st.info("Population projection unavailable.")
+        with final_vis_c2:
+            final_act_df = build_activity_frame(optimizer)
+            if not final_act_df.empty:
+                act_chart = make_bar_chart(
+                    final_act_df, "index", "activity",
+                    "Antibody Activity / Stagnation", "Antibody Index", "Activity A = T / (S + eps)"
+                )
+                if act_chart is not None:
+                    st.altair_chart(act_chart, use_container_width=True)
+            else:
+                st.info("Activity view unavailable.")
+
+        with st.expander("Show compact final population table", expanded=False):
+            final_pop_df = build_population_frame(viz_state["final_pop"], viz_state["final_fit"])
+            if not final_pop_df.empty:
+                st.dataframe(final_pop_df.head(50), use_container_width=True)
+            else:
+                st.write("No final population data available.")
+    
+        
 
         # --- LOCAL VALIDATION (using validate_schedule.py) ---
         st.header("3. Schedule Validation")
@@ -431,7 +777,8 @@ if uploaded_file is not None:
                 label="Download Excel Format",
                 data=output.getvalue(),
                 file_name="Optimized_Schedule.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                on_click="ignore"
             )
 
         # Full validation report download
@@ -441,6 +788,7 @@ if uploaded_file is not None:
             data=report_text,
             file_name="validation_report.txt",
             mime="text/plain",
+            on_click="ignore",
         )
 
         # --- SAVE LOG FILE ---
@@ -472,6 +820,10 @@ if uploaded_file is not None:
             lf.write(f"Variables    : {dim}\n")
             lf.write(f"Rooms        : {num_rooms}\n")
             lf.write(f"Timeslots    : {num_timeslots}\n\n")
+            lf.write(f"--- TSD Diagnostics ---\n")
+            lf.write(f"Generations Run : {info.get('generations_run', len(best_history_live))}\n")
+            lf.write(f"Evaluations Used: {info.get('evals_used', 0)}\n")
+            lf.write(f"Substrate Norm  : {info.get('substrate_norm', 0.0):.6f}\n\n")
             lf.write(f"--- Validation Results ---\n")
             feasible_str = "FEASIBLE" if report.is_feasible else "INFEASIBLE"
             lf.write(f"Feasibility  : {feasible_str}\n")
@@ -484,4 +836,3 @@ if uploaded_file is not None:
                 lf.write(f"  {cname}: {soft_groups_log.get(cname, 0)}\n")
 
         st.success(f"Log saved to: logs/run_{timestamp}.log")
-
