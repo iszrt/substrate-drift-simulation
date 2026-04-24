@@ -78,7 +78,7 @@ python preprocess.py
 ### 2. Validation of Initial Schedule
 
 ```bash
-python validate_schedule.py
+app_visualized_labeled.py
 ```
 
 **What it does:**
