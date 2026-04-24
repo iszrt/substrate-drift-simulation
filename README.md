@@ -2,7 +2,7 @@
 
 **Thesis Project** — University of Science and Technology of the Philippines (USTP)
 **Department:** College of Information Technology and Computing (CITC)
-**Algorithm:** Event-Triggered FCSA with Temporal Substrate Drift (ETFCSA-TSD)
+**Algorithm:** (SUBSTRATE DRIFT CLONAL SELECTION ALGORITHM) SDCSA
 **Validation Standard:** ITC 2019-inspired constraint framework
 
 ---
